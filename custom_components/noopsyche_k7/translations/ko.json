@@ -1,0 +1,76 @@
+{
+  "title": "Noo-Psyche K7",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Noo-Psyche K7 연결",
+        "description": "조명의 고정 LAN 주소를 입력하세요.",
+        "data": {
+          "host": "호스트 또는 IP 주소",
+          "port": "TCP 포트"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "조명에 연결할 수 없습니다",
+      "invalid_response": "장치가 지원되지 않는 응답을 반환했습니다",
+      "unknown": "예기치 않은 오류가 발생했습니다"
+    },
+    "abort": {
+      "already_configured": "이 조명은 이미 구성되어 있습니다"
+    }
+  },
+  "entity": {
+    "light": { "manual_output": { "name": "수동 출력" } },
+    "number": {
+      "white": { "name": "화이트" },
+      "royal_blue": { "name": "로열 블루" },
+      "green": { "name": "그린" },
+      "uv": { "name": "UV" },
+      "blue": { "name": "블루" },
+      "red": { "name": "레드" }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "작동 모드",
+        "state": { "auto": "자동", "manual": "수동" }
+      }
+    },
+    "button": { "sync_time": { "name": "시간 동기화" } },
+    "sensor": { "schedule": { "name": "일정" } }
+  },
+  "services": {
+    "get_schedule": {
+      "name": "일정 가져오기",
+      "description": "수동 채널 값, 모드와 저장된 일정을 반환합니다.",
+      "fields": { "config_entry_id": { "name": "구성 항목" } }
+    },
+    "set_schedule": {
+      "name": "일정 설정",
+      "description": "조명에 저장된 24개 시점 일정을 덮어씁니다.",
+      "fields": {
+        "config_entry_id": { "name": "구성 항목" },
+        "schedule": { "name": "일정" },
+        "auto_mode": { "name": "자동 모드 활성화" }
+      }
+    },
+    "apply_profile": {
+      "name": "기본 프로필 적용",
+      "description": "공식 앱의 기본 프로필로 저장 일정을 덮어씁니다.",
+      "fields": {
+        "config_entry_id": { "name": "구성 항목" },
+        "profile": { "name": "프로필" },
+        "auto_mode": { "name": "자동 모드 활성화" }
+      }
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "sps": "SPS",
+        "lps": "LPS",
+        "mixed": "SPS/LPS 혼합"
+      }
+    }
+  }
+}

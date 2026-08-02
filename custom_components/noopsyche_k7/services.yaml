@@ -1,0 +1,45 @@
+get_schedule:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: noopsyche_k7
+
+set_schedule:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: noopsyche_k7
+    schedule:
+      required: true
+      selector:
+        object:
+    auto_mode:
+      required: false
+      selector:
+        boolean:
+
+apply_profile:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: noopsyche_k7
+    profile:
+      required: true
+      selector:
+        select:
+          translation_key: profile
+          options:
+            - sps
+            - lps
+            - mixed
+    auto_mode:
+      required: false
+      default: true
+      selector:
+        boolean:

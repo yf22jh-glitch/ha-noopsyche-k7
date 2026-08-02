@@ -1,0 +1,12 @@
+{
+  "domain": "noopsyche_k7",
+  "name": "Noo-Psyche K7",
+  "codeowners": ["@yf22jh-glitch"],
+  "config_flow": true,
+  "documentation": "https://github.com/yf22jh-glitch/ha-noopsyche-k7",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/yf22jh-glitch/ha-noopsyche-k7/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

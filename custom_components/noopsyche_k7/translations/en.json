@@ -1,0 +1,76 @@
+{
+  "title": "Noo-Psyche K7",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to a Noo-Psyche K7",
+        "description": "Enter the fixed LAN address of the light.",
+        "data": {
+          "host": "Host or IP address",
+          "port": "TCP port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the light",
+      "invalid_response": "The device returned an unsupported response",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This light is already configured"
+    }
+  },
+  "entity": {
+    "light": { "manual_output": { "name": "Manual output" } },
+    "number": {
+      "white": { "name": "White" },
+      "royal_blue": { "name": "Royal blue" },
+      "green": { "name": "Green" },
+      "uv": { "name": "UV" },
+      "blue": { "name": "Blue" },
+      "red": { "name": "Red" }
+    },
+    "select": {
+      "operating_mode": {
+        "name": "Operating mode",
+        "state": { "auto": "Automatic", "manual": "Manual" }
+      }
+    },
+    "button": { "sync_time": { "name": "Synchronize time" } },
+    "sensor": { "schedule": { "name": "Schedule" } }
+  },
+  "services": {
+    "get_schedule": {
+      "name": "Get schedule",
+      "description": "Return the manual values, mode, and stored schedule.",
+      "fields": { "config_entry_id": { "name": "Configuration entry" } }
+    },
+    "set_schedule": {
+      "name": "Set schedule",
+      "description": "Overwrite the light's stored 24-point schedule.",
+      "fields": {
+        "config_entry_id": { "name": "Configuration entry" },
+        "schedule": { "name": "Schedule" },
+        "auto_mode": { "name": "Enable automatic mode" }
+      }
+    },
+    "apply_profile": {
+      "name": "Apply factory profile",
+      "description": "Overwrite the stored schedule with an official-app factory profile.",
+      "fields": {
+        "config_entry_id": { "name": "Configuration entry" },
+        "profile": { "name": "Profile" },
+        "auto_mode": { "name": "Enable automatic mode" }
+      }
+    }
+  },
+  "selector": {
+    "profile": {
+      "options": {
+        "sps": "SPS",
+        "lps": "LPS",
+        "mixed": "SPS/LPS mixed"
+      }
+    }
+  }
+}
