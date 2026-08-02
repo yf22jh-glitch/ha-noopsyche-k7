@@ -44,6 +44,9 @@
     "button": {
       "sync_time": { "name": "Synchronize time" }
     },
+    "switch": {
+      "demonstration": { "name": "Demonstration" }
+    },
     "sensor": {
       "schedule": { "name": "Schedule" }
     }
@@ -56,12 +59,20 @@
         "config_entry_id": { "name": "Configuration entry" }
       }
     },
+    "get_profile": {
+      "name": "Get factory profile",
+      "description": "Return an official-app profile without writing it to the light.",
+      "fields": {
+        "profile": { "name": "Profile" }
+      }
+    },
     "set_schedule": {
       "name": "Set schedule",
       "description": "Overwrite the light's stored 24-point schedule.",
       "fields": {
         "config_entry_id": { "name": "Configuration entry" },
         "schedule": { "name": "Schedule" },
+        "manual": { "name": "Manual channel values" },
         "auto_mode": { "name": "Enable automatic mode" }
       }
     },
@@ -72,6 +83,24 @@
         "config_entry_id": { "name": "Configuration entry" },
         "profile": { "name": "Profile" },
         "auto_mode": { "name": "Enable automatic mode" }
+      }
+    },
+    "preview": {
+      "name": "Preview channel output",
+      "description": "Send six temporary preview channel values without saving the schedule.",
+      "fields": {
+        "config_entry_id": { "name": "Configuration entry" },
+        "channels": { "name": "Channels" }
+      }
+    },
+    "sync_time": {
+      "name": "Set light time",
+      "description": "Set an explicit hour, minute, and second on the light.",
+      "fields": {
+        "config_entry_id": { "name": "Configuration entry" },
+        "hour": { "name": "Hour" },
+        "minute": { "name": "Minute" },
+        "second": { "name": "Second" }
       }
     }
   },

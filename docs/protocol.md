@@ -96,7 +96,12 @@ from the official APK is copied into this repository.
 
 ## Validation status
 
-Static analysis and automated mock-device tests are complete. A read-only probe
-to the known light address `10.0.30.135:8266` timed out on 2026-08-02, so a raw
-hardware response and all write operations remain to be validated with the
-physical light online.
+Static analysis and automated mock-device tests are complete. The physical
+K7 Pro `K7_Pro10021` was reached at `10.0.30.134:8266`; full-state reads,
+manual luminance writes, and automatic/manual mode restoration were verified.
+The manual test changed channel one from 50 to 49, read it back, restored it to
+50, and restored automatic mode. The stored 24-point schedule was not changed.
+
+Schedule writes, preview output, demonstration mode, and clock writes remain
+unverified against the physical lamp. Those controls are implemented for later
+explicit testing but are not part of the completed hardware validation.

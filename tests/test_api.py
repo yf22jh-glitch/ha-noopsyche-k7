@@ -3,10 +3,14 @@
 import asyncio
 from datetime import datetime
 
+import custom_components.noopsyche_k7.api as api_module
 from custom_components.noopsyche_k7.api import (
     CMD_ALL_READ,
     CMD_ALL_SET,
     CMD_CHANGE_MODE,
+    CMD_DEMONSTRATION,
+    CMD_PREVIEW_LUMINANCE,
+    CMD_SYNC_TIME,
     FRAME_START,
     NooPsycheK7Client,
     ScheduleSlot,
@@ -84,5 +88,41 @@ def test_async_read_and_schedule_write() -> None:
         assert received[1].startswith(FRAME_START + CMD_ALL_SET)
         assert len(received[1]) == 208
         assert received[1][-5:] == bytes((1, 17, 30, 45, 0xBB))
+
+    asyncio.run(scenario())
+
+
+def test_preview_demonstration_and_clock_packets() -> None:
+    async def scenario() -> None:
+        received: list[bytes] = []
+
+        async def handle(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
+            received.append(await reader.read(4096))
+            writer.close()
+            await writer.wait_closed()
+
+        server = await asyncio.start_server(handle, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        client = NooPsycheK7Client("127.0.0.1", port, timeout=1)
+        original_settle_timeout = api_module.ACK_SETTLE_TIMEOUT
+        api_module.ACK_SETTLE_TIMEOUT = 0
+        try:
+            await client.async_preview((1, 2, 3, 4, 5, 6))
+            await client.async_set_demonstration(True)
+            await client.async_set_demonstration(False)
+            await client.async_sync_time(datetime(2026, 8, 2, 19, 20, 21))
+        finally:
+            api_module.ACK_SETTLE_TIMEOUT = original_settle_timeout
+            server.close()
+            await server.wait_closed()
+
+        assert received == [
+            build_packet(CMD_PREVIEW_LUMINANCE, bytes((1, 2, 3, 4, 5, 6))),
+            build_packet(CMD_DEMONSTRATION, b"\x00"),
+            build_packet(CMD_DEMONSTRATION, b"\x01"),
+            build_packet(CMD_SYNC_TIME, bytes((19, 20, 21))),
+        ]
 
     asyncio.run(scenario())

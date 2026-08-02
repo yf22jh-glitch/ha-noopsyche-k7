@@ -6,6 +6,18 @@ get_schedule:
         config_entry:
           integration: noopsyche_k7
 
+get_profile:
+  fields:
+    profile:
+      required: true
+      selector:
+        select:
+          translation_key: profile
+          options:
+            - sps
+            - lps
+            - mixed
+
 set_schedule:
   fields:
     config_entry_id:
@@ -15,6 +27,10 @@ set_schedule:
           integration: noopsyche_k7
     schedule:
       required: true
+      selector:
+        object:
+    manual:
+      required: false
       selector:
         object:
     auto_mode:
@@ -43,3 +59,44 @@ apply_profile:
       default: true
       selector:
         boolean:
+
+preview:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: noopsyche_k7
+    channels:
+      required: true
+      selector:
+        object:
+
+sync_time:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: noopsyche_k7
+    hour:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 23
+          mode: box
+    minute:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 59
+          mode: box
+    second:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 59
+          mode: box

@@ -19,6 +19,10 @@ The integration talks directly to the light over TCP port 8266.
 - Clock synchronization button
 - Read and write actions for the complete 24-point schedule
 - Official-app SPS, LPS, and mixed factory profiles
+- App-style Lovelace card with a six-channel 24-hour curve editor
+- Draft-only profile loading, zeroing, and JSON import/export
+- Schedule-point output preview and accelerated day-cycle demonstration mode
+- Current-time and explicit-time synchronization
 - Local polling and automatic unavailable/recovery handling
 - Korean and English translations
 
@@ -53,6 +57,26 @@ Go to **Settings → Devices & services → Add integration**, search for
 
 HACS tracks published releases and exposes future versions through Home
 Assistant's update entities.
+
+## App-style dashboard card
+
+The integration serves and registers its Lovelace card automatically. After
+restarting Home Assistant, add a **Manual** card with the K7 operating-mode
+entity as its anchor:
+
+```yaml
+type: custom:noopsyche-k7-card
+entity: select.k7_pro10021_operating_mode
+```
+
+The card discovers every other K7 entity in the same config entry. It provides
+Control, Schedule, and Import & export tabs. Profile selection, zeroing, and
+JSON import only change an in-browser draft; the light is not written until
+**Save schedule** is selected and confirmed. Preview, demonstration, manual
+sliders, time synchronization, and Save schedule do send commands immediately.
+
+See [the dashboard guide](docs/dashboard.md) for the complete APK-to-Home
+Assistant feature mapping and safety behavior.
 
 ## Actions
 
@@ -89,7 +113,8 @@ also overwrites the stored schedule.
 ## Compatibility and safety
 
 - K7 Pro protocol: read-state path physically verified with app 2.0.3 protocol
-- K7 Pro write commands: physical validation pending
+- K7 Pro manual luminance and mode writes: physically verified and restored
+- K7 Pro schedule, preview, demonstration, and clock writes: physical validation pending
 - K7 Mini: protocol-compatible by app design; physical validation pending
 - No cloud account or token is used
 - The lamp protocol has no authentication, so never expose TCP 8266 publicly
