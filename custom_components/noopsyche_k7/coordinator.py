@@ -52,10 +52,11 @@ class NooPsycheK7Coordinator(DataUpdateCoordinator[LampState]):
         self,
         schedule: tuple[ScheduleSlot, ...],
         auto_mode: bool,
+        manual: tuple[int, ...] | None = None,
     ) -> None:
-        """Set the full schedule while preserving current manual values."""
+        """Set the full schedule and optionally replace manual values."""
         await self.client.async_set_schedule(
-            self.data.manual,
+            manual or self.data.manual,
             schedule,
             auto_mode,
         )

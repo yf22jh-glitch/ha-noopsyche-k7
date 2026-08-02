@@ -18,6 +18,7 @@ jobs:
       - run: python -m pip install -e '.[dev]'
       - run: ruff check .
       - run: pytest
+      - run: node --check custom_components/noopsyche_k7/frontend/noopsyche-k7-card.js
 
   home-assistant:
     runs-on: ubuntu-latest
