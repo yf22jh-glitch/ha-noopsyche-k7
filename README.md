@@ -42,9 +42,10 @@ Go to **Settings → Devices & services → Add integration**, search for
 
 ### HACS custom repository
 
-Add this repository to HACS as a custom **Integration** repository, install it,
-and restart Home Assistant. Access to a private GitHub repository must already
-be available to the GitHub account used by HACS.
+HACS supports public GitHub repositories only. While this repository remains
+private, use the manual installation steps above. If the repository is made
+public later, add it to HACS as a custom **Integration** repository, install it,
+and restart Home Assistant.
 
 ## Actions
 
