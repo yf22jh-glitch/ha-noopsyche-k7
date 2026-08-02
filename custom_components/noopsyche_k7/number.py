@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from homeassistant.components.number import NumberEntity, NumberMode
+from homeassistant.components.number import (
+    NumberEntity,
+    NumberEntityDescription,
+    NumberMode,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant
@@ -19,8 +23,8 @@ from .entity import NooPsycheK7ManualEntity
 PARALLEL_UPDATES = 1
 
 
-@dataclass(frozen=True)
-class K7ChannelDescription:
+@dataclass(frozen=True, kw_only=True)
+class K7ChannelDescription(NumberEntityDescription):
     """Describe one protocol channel."""
 
     key: str
