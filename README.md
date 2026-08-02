@@ -5,9 +5,10 @@ The integration talks directly to the light over TCP port 8266.
 
 > [!CAUTION]
 > This is an early reverse-engineered integration. Protocol structure is
-> verified against the official Android APK and automated tests, but the target
-> physical K7 Pro was offline during the first hardware probe. Back up the
-> existing schedule with `noopsyche_k7.get_schedule` before any schedule write.
+> verified against the official Android APK, automated tests, and a physical K7
+> Pro read-state response. Physical validation of write commands is still in
+> progress. Back up the existing schedule with `noopsyche_k7.get_schedule`
+> before any schedule write.
 
 ## Features
 
@@ -42,10 +43,16 @@ Go to **Settings → Devices & services → Add integration**, search for
 
 ### HACS custom repository
 
-HACS supports public GitHub repositories only. While this repository remains
-private, use the manual installation steps above. If the repository is made
-public later, add it to HACS as a custom **Integration** repository, install it,
-and restart Home Assistant.
+1. Open HACS and select the three-dot menu in the top-right corner.
+2. Select **Custom repositories**.
+3. Add `https://github.com/yf22jh-glitch/ha-noopsyche-k7` as an
+   **Integration** repository.
+4. Download **Noo-Psyche K7** and restart Home Assistant.
+5. Go to **Settings → Devices & services → Add integration**, search for
+   **Noo-Psyche K7**, and enter the light's fixed IP address.
+
+HACS tracks published releases and exposes future versions through Home
+Assistant's update entities.
 
 ## Actions
 
@@ -81,7 +88,8 @@ also overwrites the stored schedule.
 
 ## Compatibility and safety
 
-- K7 Pro protocol: statically verified from official app 2.0.3
+- K7 Pro protocol: read-state path physically verified with app 2.0.3 protocol
+- K7 Pro write commands: physical validation pending
 - K7 Mini: protocol-compatible by app design; physical validation pending
 - No cloud account or token is used
 - The lamp protocol has no authentication, so never expose TCP 8266 publicly
