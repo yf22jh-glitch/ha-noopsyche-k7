@@ -6,14 +6,24 @@ entities and integration actions; it does not copy Android source or assets.
 
 ## Add the card
 
-The integration registers the JavaScript module when Home Assistant starts, so
-no separate HACS frontend repository or Lovelace resource is required. Add a
-Manual card and select the K7 operating-mode entity:
+The integration serves the JavaScript module from Home Assistant. Add this
+**JavaScript Module** under **Settings → Dashboards → Resources**:
+
+```text
+/noopsyche_k7/noopsyche-k7-card.js?v=0.2.1
+```
+
+Then add a Manual card and select the K7 operating-mode entity:
 
 ```yaml
 type: custom:noopsyche-k7-card
 entity: select.k7_pro10021_operating_mode
 ```
+
+Using the Lovelace resource as the single loading path ensures the card is
+registered after the Home Assistant frontend is ready. It prevents the
+intermittent `Custom element doesn't exist: noopsyche-k7-card` error caused by
+an early startup import.
 
 The card looks up all other `noopsyche_k7` entities belonging to the same
 config entry. Renaming the entities does not break this lookup.

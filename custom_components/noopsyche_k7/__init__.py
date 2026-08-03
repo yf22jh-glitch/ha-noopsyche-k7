@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.components import frontend
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
@@ -93,7 +92,6 @@ SYNC_TIME_SCHEMA = vol.Schema(
 )
 
 FRONTEND_URL = "/noopsyche_k7/noopsyche-k7-card.js"
-FRONTEND_VERSION = "0.2.0"
 
 
 @dataclass
@@ -150,10 +148,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 cache_headers=True,
             )
         ]
-    )
-    frontend.add_extra_js_url(
-        hass,
-        f"{FRONTEND_URL}?v={FRONTEND_VERSION}",
     )
 
     async def async_get_schedule(call: ServiceCall) -> ServiceResponse:

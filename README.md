@@ -60,9 +60,15 @@ Assistant's update entities.
 
 ## App-style dashboard card
 
-The integration serves and registers its Lovelace card automatically. After
-restarting Home Assistant, add a **Manual** card with the K7 operating-mode
-entity as its anchor:
+The integration serves its Lovelace card from Home Assistant. After restarting
+Home Assistant, add the following **JavaScript Module** under **Settings →
+Dashboards → Resources**:
+
+```text
+/noopsyche_k7/noopsyche-k7-card.js?v=0.2.1
+```
+
+Then add a **Manual** card with the K7 operating-mode entity as its anchor:
 
 ```yaml
 type: custom:noopsyche-k7-card
@@ -74,6 +80,10 @@ Control, Schedule, and Import & export tabs. Profile selection, zeroing, and
 JSON import only change an in-browser draft; the light is not written until
 **Save schedule** is selected and confirmed. Preview, demonstration, manual
 sliders, time synchronization, and Save schedule do send commands immediately.
+
+The card is intentionally loaded only as a Lovelace resource. This avoids an
+intermittent Home Assistant startup race that can otherwise show **Custom
+element doesn't exist** after the view is recreated.
 
 See [the dashboard guide](docs/dashboard.md) for the complete APK-to-Home
 Assistant feature mapping and safety behavior.
