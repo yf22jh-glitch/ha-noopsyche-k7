@@ -65,7 +65,7 @@ Home Assistant, add the following **JavaScript Module** under **Settings →
 Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.2.1
+/noopsyche_k7/noopsyche-k7-card.js?v=0.2.2
 ```
 
 Then add a **Manual** card with the K7 operating-mode entity as its anchor:
@@ -80,6 +80,9 @@ Control, Schedule, and Import & export tabs. Profile selection, zeroing, and
 JSON import only change an in-browser draft; the light is not written until
 **Save schedule** is selected and confirmed. Preview, demonstration, manual
 sliders, time synchronization, and Save schedule do send commands immediately.
+Every percentage can also be entered directly. Percentage and minute fields
+accept only whole numbers in their protocol ranges; decimals and out-of-range
+values are rejected before any command is prepared.
 
 The card is intentionally loaded only as a Lovelace resource. This avoids an
 intermittent Home Assistant startup race that can otherwise show **Custom

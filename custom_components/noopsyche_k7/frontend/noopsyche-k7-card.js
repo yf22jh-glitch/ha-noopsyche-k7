@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.2.1";
+const CARD_VERSION = "0.2.2";
 
 const CHANNELS = [
   { key: "white", name: "White", ko: "화이트", color: "#c8d4dc" },
@@ -62,6 +62,9 @@ const TEXT = {
     profileLoaded: "프로필을 편집 초안으로 불러왔어요.",
     timeSynced: "조명 시간을 설정했어요.",
     invalidTime: "시간은 HH:MM:SS 형식으로 입력해 주세요.",
+    invalidMinute: "분은 0부터 59까지 정수로 입력해 주세요.",
+    invalidPercent: "퍼센트는 0부터 100까지 정수로 입력해 주세요.",
+    directInput: "직접 입력",
     invalidImport: "올바른 K7 일정 JSON이 아니에요.",
     configError: "Noo-Psyche K7의 작동 모드 엔티티를 카드 설정에 지정해 주세요.",
     cardHint: "카드 설정 예: type: custom:noopsyche-k7-card / entity: select.…_operating_mode",
@@ -118,6 +121,9 @@ const TEXT = {
     profileLoaded: "Profile loaded as an editing draft.",
     timeSynced: "Light time set.",
     invalidTime: "Enter time as HH:MM:SS.",
+    invalidMinute: "Enter a whole-number minute from 0 to 59.",
+    invalidPercent: "Enter a whole-number percentage from 0 to 100.",
+    directInput: "Direct input",
     invalidImport: "This is not valid K7 schedule JSON.",
     configError: "Configure the card with the Noo-Psyche K7 operating-mode entity.",
     cardHint: "Example: type: custom:noopsyche-k7-card / entity: select.…_operating_mode",
@@ -137,10 +143,14 @@ const escapeHtml = (value) =>
 const clamp = (value, minimum, maximum) =>
   Math.min(maximum, Math.max(minimum, Number(value)));
 
-const finiteNumber = (value, label) => {
-  const number = Number(value);
-  if (!Number.isFinite(number)) {
-    throw new Error(`${label} must be a finite number`);
+const integerInRange = (value, minimum, maximum, label) => {
+  const text = String(value);
+  if (!/^\d+$/.test(text)) {
+    throw new Error(`${label} must be a whole number`);
+  }
+  const number = Number(text);
+  if (!Number.isSafeInteger(number) || number < minimum || number > maximum) {
+    throw new Error(`${label} must be between ${minimum} and ${maximum}`);
   }
   return number;
 };
@@ -154,13 +164,14 @@ const normalizeSchedule = (value) => {
       throw new Error(`Invalid schedule point ${index}`);
     }
     return {
-      hour: clamp(finiteNumber(slot.hour ?? index, `Point ${index} hour`), 0, 23),
-      minute: clamp(finiteNumber(slot.minute ?? 0, `Point ${index} minute`), 0, 59),
+      hour: integerInRange(slot.hour ?? index, 0, 23, `Point ${index} hour`),
+      minute: integerInRange(slot.minute ?? 0, 0, 59, `Point ${index} minute`),
       channels: slot.channels.map((channel, channelIndex) =>
-        clamp(
-          finiteNumber(channel, `Point ${index} channel ${channelIndex}`),
+        integerInRange(
+          channel,
           0,
           100,
+          `Point ${index} channel ${channelIndex}`,
         ),
       ),
     };
@@ -329,7 +340,9 @@ class NooPsycheK7Card extends HTMLElement {
         port: state.port,
         auto_mode: Boolean(state.auto_mode),
         manual: Array.isArray(state.manual)
-          ? state.manual.map((value) => clamp(value, 0, 100))
+          ? state.manual.map((value, index) =>
+              integerInRange(value, 0, 100, `Manual channel ${index}`),
+            )
           : [0, 0, 0, 0, 0, 0],
         schedule: normalizeSchedule(state.schedule),
       };
@@ -500,12 +513,21 @@ class NooPsycheK7Card extends HTMLElement {
   }
 
   _sliderRow({ label, value, color, entity, role, disabled }) {
-    return `<label class="slider-row ${disabled ? "disabled" : ""}">
+    const percentage = Math.round(clamp(value, 0, 100));
+    const directLabel = `${label} ${this._text().directInput}`;
+    return `<div class="slider-row ${disabled ? "disabled" : ""}">
       <span class="channel-label"><i style="--channel:${color}"></i>${escapeHtml(label)}</span>
-      <input type="range" min="0" max="100" step="1" value="${clamp(value, 0, 100)}"
+      <input type="range" min="0" max="100" step="1" value="${percentage}"
+        aria-label="${escapeHtml(label)}" data-control-range
         data-entity="${escapeHtml(entity || "")}" data-role="${role}" ${disabled ? "disabled" : ""}>
-      <output>${Math.round(clamp(value, 0, 100))}%</output>
-    </label>`;
+      <label class="percent-field">
+        <input class="percent-number" type="text" inputmode="numeric" pattern="[0-9]{1,3}"
+          maxlength="3" value="${percentage}" aria-label="${escapeHtml(directLabel)}"
+          data-control-percent data-entity="${escapeHtml(entity || "")}" data-role="${role}"
+          ${disabled ? "disabled" : ""}>
+        <span aria-hidden="true">%</span>
+      </label>
+    </div>`;
   }
 
   _scheduleView() {
@@ -534,7 +556,7 @@ class NooPsycheK7Card extends HTMLElement {
       <section class="section editor-section">
         <div class="section-head compact">
           <div><span class="eyebrow">${t.selectedPoint}</span><strong>${String(slot.hour).padStart(2, "0")}:${String(slot.minute).padStart(2, "0")}</strong></div>
-          <label class="minute-input">${t.minute}<input type="number" min="0" max="59" value="${slot.minute}" data-draft-minute></label>
+          <label class="minute-input">${t.minute}<input type="text" inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2" value="${slot.minute}" data-draft-minute></label>
         </div>
         <div class="point-strip">
           ${this._draft.schedule.map((point, index) => `<button class="point ${index === this._selectedSlot ? "selected" : ""}" data-slot="${index}">${String(point.hour).padStart(2, "0")}<small>${String(point.minute).padStart(2, "0")}</small></button>`).join("")}
@@ -554,11 +576,20 @@ class NooPsycheK7Card extends HTMLElement {
   }
 
   _draftSlider(channel, index, value) {
-    return `<label class="slider-row">
-      <span class="channel-label"><i style="--channel:${channel.color}"></i>${this._language() === "ko" ? channel.ko : channel.name}</span>
-      <input type="range" min="0" max="100" step="1" value="${value}" data-draft-channel="${index}">
-      <output>${Math.round(value)}%</output>
-    </label>`;
+    const percentage = integerInRange(value, 0, 100, `Channel ${index}`);
+    const label = this._language() === "ko" ? channel.ko : channel.name;
+    const directLabel = `${label} ${this._text().directInput}`;
+    return `<div class="slider-row">
+      <span class="channel-label"><i style="--channel:${channel.color}"></i>${escapeHtml(label)}</span>
+      <input type="range" min="0" max="100" step="1" value="${percentage}"
+        aria-label="${escapeHtml(label)}" data-draft-range="${index}">
+      <label class="percent-field">
+        <input class="percent-number" type="text" inputmode="numeric" pattern="[0-9]{1,3}"
+          maxlength="3" value="${percentage}" aria-label="${escapeHtml(directLabel)}"
+          data-draft-percent="${index}">
+        <span aria-hidden="true">%</span>
+      </label>
+    </div>`;
   }
 
   _chartSvg() {
@@ -632,7 +663,56 @@ class NooPsycheK7Card extends HTMLElement {
       </section>`;
   }
 
+  _bindIntegerInput(input, minimum, maximum, message, onValid, syncTarget = null) {
+    const field = input.closest(".percent-field");
+    const validate = () => {
+      try {
+        const value = integerInRange(input.value, minimum, maximum, "Value");
+        input.setCustomValidity("");
+        input.classList.remove("invalid");
+        field?.classList.remove("invalid");
+        input.setAttribute("aria-invalid", "false");
+        if (syncTarget) syncTarget.value = String(value);
+        return value;
+      } catch (_error) {
+        input.setCustomValidity(message);
+        input.classList.add("invalid");
+        field?.classList.add("invalid");
+        input.setAttribute("aria-invalid", "true");
+        return null;
+      }
+    };
+
+    input.addEventListener("beforeinput", (event) => {
+      if (event.data !== null && !/^\d+$/.test(event.data)) {
+        event.preventDefault();
+      }
+    });
+    input.addEventListener("input", validate);
+    input.addEventListener("change", async () => {
+      const value = validate();
+      if (value === null) {
+        input.reportValidity();
+        return;
+      }
+      input.value = String(value);
+      try {
+        await onValid(value);
+      } catch (error) {
+        this._error = error instanceof Error ? error.message : String(error);
+        this._render();
+      }
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        input.blur();
+      }
+    });
+  }
+
   _bind() {
+    const t = this._text();
     this.shadowRoot.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         this._tab = button.dataset.tab;
@@ -646,11 +726,26 @@ class NooPsycheK7Card extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-mode]").forEach((button) => {
       button.addEventListener("click", () => this._setMode(button.dataset.mode));
     });
-    this.shadowRoot.querySelectorAll('input[type="range"][data-entity]').forEach((input) => {
+    this.shadowRoot.querySelectorAll("[data-control-range]").forEach((input) => {
+      const directInput = input.closest(".slider-row").querySelector("[data-control-percent]");
       input.addEventListener("input", () => {
-        input.closest("label").querySelector("output").textContent = `${input.value}%`;
+        directInput.value = input.value;
+        directInput.setCustomValidity("");
+        directInput.classList.remove("invalid");
+        directInput.closest(".percent-field").classList.remove("invalid");
+        directInput.setAttribute("aria-invalid", "false");
       });
       input.addEventListener("change", () => this._setManualValue(input));
+    });
+    this.shadowRoot.querySelectorAll("[data-control-percent]").forEach((input) => {
+      this._bindIntegerInput(
+        input,
+        0,
+        100,
+        t.invalidPercent,
+        (value) => this._setManualValue(input, value),
+        input.closest(".slider-row").querySelector("[data-control-range]"),
+      );
     });
     this.shadowRoot.querySelectorAll("[data-profile]").forEach((button) => {
       button.addEventListener("click", () => this._loadProfile(button.dataset.profile));
@@ -661,19 +756,46 @@ class NooPsycheK7Card extends HTMLElement {
         this._render();
       });
     });
-    this.shadowRoot.querySelector("[data-draft-minute]")?.addEventListener("change", (event) => {
-      this._draft.schedule[this._selectedSlot].minute = clamp(event.target.value, 0, 59);
-      this._render();
-    });
-    this.shadowRoot.querySelectorAll("[data-draft-channel]").forEach((input) => {
-      input.addEventListener("input", () => {
-        input.closest("label").querySelector("output").textContent = `${input.value}%`;
-      });
-      input.addEventListener("change", () => {
-        const index = Number(input.dataset.draftChannel);
-        this._draft.schedule[this._selectedSlot].channels[index] = clamp(input.value, 0, 100);
+    const minuteInput = this.shadowRoot.querySelector("[data-draft-minute]");
+    if (minuteInput) {
+      this._bindIntegerInput(minuteInput, 0, 59, t.invalidMinute, (value) => {
+        this._draft.schedule[this._selectedSlot].minute = value;
         this._render();
       });
+    }
+    this.shadowRoot.querySelectorAll("[data-draft-range]").forEach((input) => {
+      const directInput = input.closest(".slider-row").querySelector("[data-draft-percent]");
+      input.addEventListener("input", () => {
+        directInput.value = input.value;
+        directInput.setCustomValidity("");
+        directInput.classList.remove("invalid");
+        directInput.closest(".percent-field").classList.remove("invalid");
+        directInput.setAttribute("aria-invalid", "false");
+      });
+      input.addEventListener("change", () => {
+        const index = Number(input.dataset.draftRange);
+        this._draft.schedule[this._selectedSlot].channels[index] = integerInRange(
+          input.value,
+          0,
+          100,
+          `Channel ${index}`,
+        );
+        this._render();
+      });
+    });
+    this.shadowRoot.querySelectorAll("[data-draft-percent]").forEach((input) => {
+      const index = Number(input.dataset.draftPercent);
+      this._bindIntegerInput(
+        input,
+        0,
+        100,
+        t.invalidPercent,
+        (value) => {
+          this._draft.schedule[this._selectedSlot].channels[index] = value;
+          this._render();
+        },
+        input.closest(".slider-row").querySelector("[data-draft-range]"),
+      );
     });
     this.shadowRoot.querySelector("[data-chart]")?.addEventListener("click", (event) => {
       const rect = event.currentTarget.getBoundingClientRect();
@@ -719,8 +841,8 @@ class NooPsycheK7Card extends HTMLElement {
     });
   }
 
-  async _setManualValue(input) {
-    const value = clamp(input.value, 0, 100);
+  async _setManualValue(input, rawValue = input.value) {
+    const value = integerInRange(rawValue, 0, 100, "Percentage");
     if (input.dataset.role === "master") {
       await this._hass.callService(
         "light",
@@ -792,7 +914,9 @@ class NooPsycheK7Card extends HTMLElement {
     try {
       const result = await this._responseService("get_profile", { profile });
       this._draft.schedule = normalizeSchedule(result.schedule);
-      this._draft.manual = result.manual.map((value) => clamp(value, 0, 100));
+      this._draft.manual = result.manual.map((value, index) =>
+        integerInRange(value, 0, 100, `Manual channel ${index}`),
+      );
       this._manualDraftChanged = true;
       this._toast(this._text().profileLoaded);
     } finally {
@@ -894,7 +1018,9 @@ class NooPsycheK7Card extends HTMLElement {
     const schedule = normalizeSchedule(payload?.schedule ?? payload);
     this._draft.schedule = schedule;
     if (Array.isArray(payload?.manual) && payload.manual.length === 6) {
-      this._draft.manual = payload.manual.map((value) => clamp(value, 0, 100));
+      this._draft.manual = payload.manual.map((value, index) =>
+        integerInRange(value, 0, 100, `Manual channel ${index}`),
+      );
       this._manualDraftChanged = true;
     }
     this._tab = "schedule";
@@ -979,11 +1105,14 @@ class NooPsycheK7Card extends HTMLElement {
       .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-bottom: 5px; }
       .section-title span { font-weight: 650; }
       .section-title small { color: var(--secondary-text-color); text-align: right; }
-      .slider-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(145px, 2fr) 46px; align-items: center; gap: 10px; min-height: 46px; border-top: 1px solid var(--k7-line); }
+      .slider-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(145px, 2fr) 68px; align-items: center; gap: 10px; min-height: 46px; border-top: 1px solid var(--k7-line); }
       .channel-label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
       .channel-label i, .legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--channel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--channel) 18%, transparent); }
       input[type="range"] { width: 100%; accent-color: var(--primary-color); }
-      output { color: var(--secondary-text-color); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+      .percent-field { display: flex; align-items: center; justify-content: flex-end; gap: 2px; padding: 3px 6px; border: 1px solid var(--k7-line); border-radius: 8px; background: var(--k7-surface); color: var(--secondary-text-color); font-size: 12px; font-variant-numeric: tabular-nums; }
+      .percent-field:focus-within { border-color: var(--primary-color); box-shadow: 0 0 0 1px var(--primary-color); }
+      .percent-number { width: 38px; min-width: 0; padding: 2px 1px; border: 0; outline: 0; color: var(--primary-text-color); background: transparent; text-align: right; font-variant-numeric: tabular-nums; }
+      .percent-field.invalid, .minute-input input.invalid { border-color: var(--error-color); box-shadow: 0 0 0 1px var(--error-color); }
       .disabled-section { opacity: .68; }
       .disabled-section .slider-row { opacity: .55; }
       .chart-section { padding-bottom: 10px; }
@@ -1041,9 +1170,9 @@ class NooPsycheK7Card extends HTMLElement {
         .segmented { width: 100%; }
         .section-title { flex-direction: column; gap: 3px; }
         .section-title small { text-align: left; }
-        .slider-row { grid-template-columns: minmax(90px, 1fr) 46px; padding: 7px 0; }
-        .slider-row input { grid-column: 1 / -1; grid-row: 2; }
-        .slider-row output { grid-column: 2; grid-row: 1; }
+        .slider-row { grid-template-columns: minmax(90px, 1fr) 68px; padding: 7px 0; }
+        .slider-row > input[type="range"] { grid-column: 1 / -1; grid-row: 2; }
+        .slider-row > .percent-field { grid-column: 2; grid-row: 1; }
         .point-strip { grid-template-columns: repeat(8, minmax(0, 1fr)); }
         .profile-section { align-items: flex-start; flex-direction: column; }
         .footer-actions .button { flex: 1 1 135px; }

@@ -3,6 +3,8 @@
 import asyncio
 from datetime import datetime
 
+import pytest
+
 import custom_components.noopsyche_k7.api as api_module
 from custom_components.noopsyche_k7.api import (
     CMD_ALL_READ,
@@ -51,6 +53,23 @@ def test_parse_state_response() -> None:
 
 def test_build_packet() -> None:
     assert build_packet(CMD_CHANGE_MODE, b"\x01") == b"\xaa\xa5\x10\x04\x01\xbb"
+
+
+@pytest.mark.parametrize("invalid_value", [1.5, "10", True])
+def test_schedule_rejects_non_integer_channel_values(invalid_value: object) -> None:
+    with pytest.raises(ValueError, match="whole number"):
+        ScheduleSlot(
+            hour=0,
+            minute=0,
+            channels=(invalid_value, 20, 30, 40, 50, 60),  # type: ignore[arg-type]
+        )
+
+
+@pytest.mark.parametrize("field,value", [("hour", 1.5), ("minute", 2.5)])
+def test_schedule_rejects_fractional_time_fields(field: str, value: float) -> None:
+    values = {"hour": 0, "minute": 0, field: value}
+    with pytest.raises(ValueError, match="whole number"):
+        ScheduleSlot(channels=(10, 20, 30, 40, 50, 60), **values)  # type: ignore[arg-type]
 
 
 def test_async_read_and_schedule_write() -> None:
@@ -113,6 +132,10 @@ def test_preview_demonstration_and_clock_packets() -> None:
             await client.async_set_demonstration(True)
             await client.async_set_demonstration(False)
             await client.async_sync_time(datetime(2026, 8, 2, 19, 20, 21))
+            for _attempt in range(100):
+                if len(received) == 4:
+                    break
+                await asyncio.sleep(0.01)
         finally:
             api_module.ACK_SETTLE_TIMEOUT = original_settle_timeout
             server.close()

@@ -32,8 +32,7 @@ class K7ChannelDescription(NumberEntityDescription):
 
 
 CHANNELS = tuple(
-    K7ChannelDescription(key=key, index=index)
-    for index, key in enumerate(CHANNEL_KEYS)
+    K7ChannelDescription(key=key, index=index) for index, key in enumerate(CHANNEL_KEYS)
 )
 
 
@@ -76,8 +75,12 @@ class NooPsycheK7Channel(NooPsycheK7ManualEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set one channel while preserving all others."""
+        if not float(value).is_integer() or not 0 <= value <= 100:
+            raise HomeAssistantError(
+                "K7 channel percentage must be a whole number from 0 to 100"
+            )
         channels = list(self.coordinator.data.manual)
-        channels[self.entity_description.index] = round(value)
+        channels[self.entity_description.index] = int(value)
         try:
             await self.coordinator.async_set_manual(tuple(channels))
         except K7Error as err:
