@@ -47,6 +47,15 @@ class K7ProtocolError(K7Error):
     """Raised when the light returns an invalid response."""
 
 
+def _validate_protocol_integer(
+    value: object, minimum: int, maximum: int, label: str
+) -> None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{label} must be a whole number")
+    if not minimum <= value <= maximum:
+        raise ValueError(f"{label} must be between {minimum} and {maximum}")
+
+
 @dataclass(frozen=True)
 class ScheduleSlot:
     """One schedule point: time followed by six channel percentages."""
@@ -57,10 +66,8 @@ class ScheduleSlot:
 
     def __post_init__(self) -> None:
         """Validate the slot."""
-        if not 0 <= self.hour <= 23:
-            raise ValueError("Schedule hour must be between 0 and 23")
-        if not 0 <= self.minute <= 59:
-            raise ValueError("Schedule minute must be between 0 and 59")
+        _validate_protocol_integer(self.hour, 0, 23, "Schedule hour")
+        _validate_protocol_integer(self.minute, 0, 59, "Schedule minute")
         _validate_channels(self.channels)
 
     def to_bytes(self) -> bytes:
@@ -107,8 +114,8 @@ class LampState:
 def _validate_channels(channels: Sequence[int]) -> None:
     if len(channels) != CHANNEL_COUNT:
         raise ValueError(f"Exactly {CHANNEL_COUNT} channels are required")
-    if any(not 0 <= value <= 100 for value in channels):
-        raise ValueError("Channel values must be between 0 and 100")
+    for value in channels:
+        _validate_protocol_integer(value, 0, 100, "Channel value")
 
 
 def _channel_tuple(
@@ -116,12 +123,12 @@ def _channel_tuple(
 ) -> tuple[int, int, int, int, int, int]:
     _validate_channels(channels)
     return (
-        int(channels[0]),
-        int(channels[1]),
-        int(channels[2]),
-        int(channels[3]),
-        int(channels[4]),
-        int(channels[5]),
+        channels[0],
+        channels[1],
+        channels[2],
+        channels[3],
+        channels[4],
+        channels[5],
     )
 
 
@@ -295,9 +302,7 @@ class NooPsycheK7Client:
                 writer.close()
                 await writer.wait_closed()
 
-    async def _async_read_state_response(
-        self, reader: asyncio.StreamReader
-    ) -> bytes:
+    async def _async_read_state_response(self, reader: asyncio.StreamReader) -> bytes:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + self.timeout
         response = bytearray()

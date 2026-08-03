@@ -56,8 +56,22 @@ PLATFORMS = [
 ]
 
 ENTRY_SCHEMA = vol.Schema({vol.Required(ATTR_CONFIG_ENTRY_ID): cv.string})
+
+
+def _strict_integer(value: Any, *, minimum: int, maximum: int, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise vol.Invalid(f"{label} must be a whole number")
+    if not minimum <= value <= maximum:
+        raise vol.Invalid(f"{label} must be between {minimum} and {maximum}")
+    return value
+
+
+def _percentage(value: Any) -> int:
+    return _strict_integer(value, minimum=0, maximum=100, label="Percentage")
+
+
 CHANNELS_SCHEMA = vol.All(
-    [vol.All(vol.Coerce(int), vol.Range(min=0, max=100))],
+    [_percentage],
     vol.Length(min=6, max=6),
 )
 SET_SCHEDULE_SCHEMA = vol.Schema(
@@ -85,9 +99,15 @@ PREVIEW_SCHEMA = vol.Schema(
 SYNC_TIME_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): cv.string,
-        vol.Required(ATTR_HOUR): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),
-        vol.Required(ATTR_MINUTE): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
-        vol.Required(ATTR_SECOND): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
+        vol.Required(ATTR_HOUR): lambda value: _strict_integer(
+            value, minimum=0, maximum=23, label="Hour"
+        ),
+        vol.Required(ATTR_MINUTE): lambda value: _strict_integer(
+            value, minimum=0, maximum=59, label="Minute"
+        ),
+        vol.Required(ATTR_SECOND): lambda value: _strict_integer(
+            value, minimum=0, maximum=59, label="Second"
+        ),
     }
 )
 
@@ -126,12 +146,27 @@ def _parse_schedule(value: list[Any]) -> tuple[ScheduleSlot, ...]:
             channels = item["channels"]
             slots.append(
                 ScheduleSlot(
-                    hour=int(item["hour"]),
-                    minute=int(item.get("minute", 0)),
-                    channels=tuple(int(channel) for channel in channels),
+                    hour=_strict_integer(
+                        item["hour"], minimum=0, maximum=23, label="Hour"
+                    ),
+                    minute=_strict_integer(
+                        item.get("minute", 0),
+                        minimum=0,
+                        maximum=59,
+                        label="Minute",
+                    ),
+                    channels=tuple(
+                        _strict_integer(
+                            channel,
+                            minimum=0,
+                            maximum=100,
+                            label="Channel value",
+                        )
+                        for channel in channels
+                    ),
                 )
             )
-    except (KeyError, TypeError, ValueError) as err:
+    except (KeyError, TypeError, ValueError, vol.Invalid) as err:
         raise ServiceValidationError(f"Invalid K7 schedule: {err}") from err
     return tuple(slots)
 
