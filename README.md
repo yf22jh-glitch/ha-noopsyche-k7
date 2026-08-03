@@ -65,7 +65,7 @@ Home Assistant, add the following **JavaScript Module** under **Settings →
 Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.3.0
+/noopsyche_k7/noopsyche-k7-card.js?v=0.3.1
 ```
 
 Then add a **Manual** card with the K7 operating-mode entity as its anchor:
