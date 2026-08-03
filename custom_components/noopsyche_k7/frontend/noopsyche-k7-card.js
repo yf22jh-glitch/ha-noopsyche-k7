@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.0";
+const CARD_VERSION = "0.3.1";
 
 const CHANNELS = [
   { key: "white", name: "White", ko: "화이트", color: "#c8d4dc" },
@@ -8,6 +8,16 @@ const CHANNELS = [
   { key: "blue", name: "Blue", ko: "블루", color: "#00a9e8" },
   { key: "red", name: "Red", ko: "레드", color: "#e45c4c" },
 ];
+
+const CHART = {
+  width: 820,
+  height: 300,
+  left: 54,
+  right: 22,
+  top: 30,
+  bottom: 42,
+  hours: 24,
+};
 
 const TEXT = {
   ko: {
@@ -600,22 +610,17 @@ class NooPsycheK7Card extends HTMLElement {
   }
 
   _chartSvg() {
-    const width = 820;
-    const height = 300;
-    const left = 54;
-    const right = 22;
-    const top = 30;
-    const bottom = 42;
+    const { width, height, left, right, top, bottom, hours } = CHART;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
-    const x = (slot) => left + ((slot.hour + slot.minute / 60) / 24) * plotWidth;
+    const x = (slot) => left + ((slot.hour + slot.minute / 60) / hours) * plotWidth;
     const y = (value) => top + ((100 - value) / 100) * plotHeight;
     const grid = [0, 25, 50, 75, 100]
       .map((value) => `<line x1="${left}" y1="${y(value)}" x2="${width - right}" y2="${y(value)}"></line><text x="6" y="${y(value) + 4}">${value}%</text>`)
       .join("");
     const axes = [0, 6, 12, 18, 24]
       .map((hour) => {
-        const position = left + (hour / 24) * plotWidth;
+        const position = left + (hour / hours) * plotWidth;
         return `<line x1="${position}" y1="${top}" x2="${position}" y2="${top + plotHeight}"></line><text x="${position}" y="${height - 14}" text-anchor="middle">${String(hour).padStart(2, "0")}</text>`;
       })
       .join("");
@@ -634,13 +639,12 @@ class NooPsycheK7Card extends HTMLElement {
     const markerX = x(selected);
     const markers = CHANNELS.map(
       (channel, index) =>
-        `<circle cx="${markerX.toFixed(1)}" cy="${y(selected.channels[index]).toFixed(1)}" r="4.2" fill="${channel.color}"></circle>`,
+        `<circle cx="${markerX.toFixed(1)}" cy="${y(selected.channels[index]).toFixed(1)}" r="3.2" fill="${channel.color}"></circle>`,
     ).join("");
     return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" data-chart>
       <defs>
         <linearGradient id="k7-chart-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#24233a"></stop><stop offset="1" stop-color="#11131b"></stop></linearGradient>
         <linearGradient id="k7-envelope" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4b8b" stop-opacity=".16"></stop><stop offset=".55" stop-color="#7f64ff" stop-opacity=".13"></stop><stop offset="1" stop-color="#35a7ff" stop-opacity=".04"></stop></linearGradient>
-        <linearGradient id="k7-marker" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4b8b"></stop><stop offset="1" stop-color="#35a7ff"></stop></linearGradient>
       </defs>
       <rect class="plot-bg" x="${left}" y="${top}" width="${plotWidth}" height="${plotHeight}" rx="16"></rect>
       <g class="grid">${grid}${axes}</g>
@@ -667,6 +671,20 @@ class NooPsycheK7Card extends HTMLElement {
     const penultimate = points.at(-2);
     const last = points.at(-1);
     return `${path} Q ${penultimate.x.toFixed(1)},${penultimate.y.toFixed(1)} ${last.x.toFixed(1)},${last.y.toFixed(1)}`;
+  }
+
+  _scheduleSlotAtSvgX(svgX) {
+    const plotWidth = CHART.width - CHART.left - CHART.right;
+    const plotRatio = clamp((svgX - CHART.left) / plotWidth, 0, 1);
+    const selectedHour = plotRatio * CHART.hours;
+    return this._draft.schedule.reduce((nearestIndex, slot, index, schedule) => {
+      const slotHour = slot.hour + slot.minute / 60;
+      const nearest = schedule[nearestIndex];
+      const nearestHour = nearest.hour + nearest.minute / 60;
+      return Math.abs(slotHour - selectedHour) < Math.abs(nearestHour - selectedHour)
+        ? index
+        : nearestIndex;
+    }, 0);
   }
 
   _transferView() {
@@ -847,8 +865,9 @@ class NooPsycheK7Card extends HTMLElement {
     });
     this.shadowRoot.querySelector("[data-chart]")?.addEventListener("click", (event) => {
       const rect = event.currentTarget.getBoundingClientRect();
-      const plotRatio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-      this._selectedSlot = Math.round(plotRatio * 23);
+      if (rect.width <= 0) return;
+      const svgX = ((event.clientX - rect.left) / rect.width) * CHART.width;
+      this._selectedSlot = this._scheduleSlotAtSvgX(svgX);
       this._render();
     });
     this.shadowRoot.querySelectorAll("[data-action]").forEach((button) => {
@@ -1202,8 +1221,9 @@ class NooPsycheK7Card extends HTMLElement {
       .series path { fill: none; vector-effect: non-scaling-stroke; }
       .series-glow { opacity: .13; stroke-width: 8; }
       .series-line { stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.35; }
-      .selected-line { stroke: url(#k7-marker); stroke-width: 2; stroke-dasharray: 5 5; vector-effect: non-scaling-stroke; }
-      .selected-markers circle { stroke: #11131b; stroke-width: 2.2; filter: drop-shadow(0 0 5px currentColor); }
+      .selected-line { opacity: .55; stroke: #fff; stroke-width: 1; stroke-dasharray: 3 5; pointer-events: none; vector-effect: non-scaling-stroke; }
+      .selected-markers { pointer-events: none; }
+      .selected-markers circle { stroke: #11131b; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
       .legend { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
       .legend span { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 6px; min-width: 0; padding: 8px 9px; border: 1px solid rgba(255,255,255,.06); border-radius: 11px; background: rgba(255,255,255,.028); }
       .legend b { overflow: hidden; color: #bcb7c1; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }

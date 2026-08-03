@@ -10,7 +10,7 @@ The integration serves the JavaScript module from Home Assistant. Add this
 **JavaScript Module** under **Settings → Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.3.0
+/noopsyche_k7/noopsyche-k7-card.js?v=0.3.1
 ```
 
 Then add a Manual card and select the K7 operating-mode entity:
