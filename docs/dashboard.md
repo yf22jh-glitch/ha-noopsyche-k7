@@ -10,7 +10,7 @@ The integration serves the JavaScript module from Home Assistant. Add this
 **JavaScript Module** under **Settings → Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.2.2
+/noopsyche_k7/noopsyche-k7-card.js?v=0.3.0
 ```
 
 Then add a Manual card and select the K7 operating-mode entity:
@@ -32,6 +32,11 @@ Channel percentages can be changed with either the slider or the adjacent
 direct-input field. Direct percentage input accepts only integers from 0 to
 100, and schedule minutes accept only integers from 0 to 59. Decimal,
 exponential, signed, empty, and out-of-range values are never committed.
+
+The chart uses smoothed curves for the six channels, a subtle maximum-output
+envelope, selected-time markers, and legends that show every selected value.
+These are presentation-only enhancements; schedule data remains the same 24
+validated protocol points.
 
 ## Feature mapping
 

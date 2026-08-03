@@ -65,7 +65,7 @@ Home Assistant, add the following **JavaScript Module** under **Settings →
 Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.2.2
+/noopsyche_k7/noopsyche-k7-card.js?v=0.3.0
 ```
 
 Then add a **Manual** card with the K7 operating-mode entity as its anchor:
@@ -83,6 +83,11 @@ sliders, time synchronization, and Save schedule do send commands immediately.
 Every percentage can also be entered directly. Percentage and minute fields
 accept only whole numbers in their protocol ranges; decimals and out-of-range
 values are rejected before any command is prepared.
+
+The v0.3 dashboard uses the same dark glass, rounded panels, and pink/blue
+accent language as the Pink Fam network and media cards. Its schedule view adds
+smooth channel curves, an overall intensity envelope, selected-point markers,
+and value-rich channel legends without changing device behavior.
 
 The card is intentionally loaded only as a Lovelace resource. This avoids an
 intermittent Home Assistant startup race that can otherwise show **Custom
