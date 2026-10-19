@@ -14,6 +14,7 @@ dev = [
   "pytest>=8.0",
   "ruff>=0.12",
 ]
+ha-tests = ["homeassistant==2026.9.4"]
 
 [tool.setuptools]
 packages = []

@@ -195,9 +195,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def async_set_schedule(call: ServiceCall) -> None:
         runtime_data = _loaded_runtime_data(hass, call.data[ATTR_CONFIG_ENTRY_ID])
         schedule = _parse_schedule(call.data[ATTR_SCHEDULE])
-        auto_mode = call.data.get(
-            ATTR_AUTO_MODE, runtime_data.coordinator.data.auto_mode
-        )
+        # Resolve an omitted mode from the fresh device read inside the
+        # coordinator's transaction, after any preceding mode command.
+        auto_mode = call.data.get(ATTR_AUTO_MODE)
         try:
             await runtime_data.coordinator.async_set_schedule(
                 schedule,

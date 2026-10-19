@@ -79,9 +79,12 @@ class NooPsycheK7Channel(NooPsycheK7ManualEntity, NumberEntity):
             raise HomeAssistantError(
                 "K7 channel percentage must be a whole number from 0 to 100"
             )
-        channels = list(self.coordinator.data.manual)
-        channels[self.entity_description.index] = int(value)
+        def update(current: tuple[int, ...]) -> tuple[int, ...]:
+            channels = list(current)
+            channels[self.entity_description.index] = int(value)
+            return tuple(channels)
+
         try:
-            await self.coordinator.async_set_manual(tuple(channels))
+            await self.coordinator.async_update_manual(update)
         except K7Error as err:
             raise HomeAssistantError(f"Unable to set K7 channel: {err}") from err

@@ -50,32 +50,31 @@ class NooPsycheK7Light(NooPsycheK7ManualEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Restore or scale the manual output."""
-        channels = self.coordinator.data.manual
-        if not any(channels):
-            channels = self._last_nonzero or (50, 50, 50, 50, 50, 50)
-
-        if ATTR_BRIGHTNESS in kwargs:
-            target = round(kwargs[ATTR_BRIGHTNESS] * 100 / 255)
-            current_max = max(channels)
-            if current_max:
-                channels = tuple(
-                    min(100, round(value * target / current_max))
-                    for value in channels
-                )
-            else:
-                channels = (target,) * 6
+        def update(channels: tuple[int, ...]) -> tuple[int, ...]:
+            if not any(channels):
+                channels = self._last_nonzero or (50, 50, 50, 50, 50, 50)
+            if ATTR_BRIGHTNESS in kwargs:
+                target = round(kwargs[ATTR_BRIGHTNESS] * 100 / 255)
+                current_max = max(channels)
+                if current_max:
+                    channels = tuple(
+                        min(100, round(value * target / current_max))
+                        for value in channels
+                    )
+                else:
+                    channels = (target,) * 6
+            return channels
 
         try:
-            await self.coordinator.async_set_manual(channels)
+            await self.coordinator.async_update_manual(update)
         except K7Error as err:
             raise HomeAssistantError(f"Unable to set K7 brightness: {err}") from err
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Set all manual channels to zero."""
-        current = self.coordinator.data.manual
-        if any(current):
-            self._last_nonzero = current
         try:
-            await self.coordinator.async_set_manual((0, 0, 0, 0, 0, 0))
+            previous = await self.coordinator.async_set_manual((0, 0, 0, 0, 0, 0))
+            if any(previous):
+                self._last_nonzero = previous
         except K7Error as err:
             raise HomeAssistantError(f"Unable to turn off K7 output: {err}") from err

@@ -150,3 +150,22 @@ node --test tests/test_frontend.js
 
 The official APK and decompiled output are excluded from Git and are not needed
 to run the integration.
+
+## Command serialization regression tests
+
+Partial channel changes, master brightness, mode changes and schedule writes
+share one coordinator transaction: read the current lamp state, derive the
+change, write once, and publish the observed read-back. Polling uses the same
+lock. Manual commands in automatic mode are rejected without making the healthy
+lamp unavailable.
+
+Protocol-only tests still run without Home Assistant. To run the 11 coordinator
+regressions against the actual HA runtime, use Python 3.14:
+
+```sh
+python -m pip install -e '.[dev,ha-tests]'
+python -m pytest tests/test_command_serialization.py -q
+```
+
+The HA command serialization workflow runs this suite separately. Its lamp I/O
+is replaced with deterministic test responses; it does not contact a light.
