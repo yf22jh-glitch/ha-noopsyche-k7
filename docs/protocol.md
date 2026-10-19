@@ -1,4 +1,4 @@
-# Noo-Psyche K7 local protocol
+# Noo-Psyche K7 Pro 3 local protocol
 
 This document records interoperability facts recovered from the official
 Noo-Psyche Android application. Decompiled application source and the APK are
@@ -46,7 +46,7 @@ method that sends it.
 
 ## Channel order
 
-The app's slider and graph colors establish this byte order for K7 Pro:
+The app's slider and graph colors establish this byte order for K7 Pro 3:
 
 1. White
 2. Royal blue
@@ -54,9 +54,6 @@ The app's slider and graph colors establish this byte order for K7 Pro:
 4. UV/violet
 5. Blue/cyan
 6. Red
-
-K7 Mini uses the first three channel positions and sends zero for the remaining
-positions.
 
 ## Complete configuration
 
@@ -74,7 +71,7 @@ The response parser uses the confirmed prefix below. The official app reads the
 mode at absolute response byte 203 when 24 slots are present and expects more
 than 214 bytes in the complete response. Some firmware variants append clock
 or device-identifier data before `BB`; the client preserves that trailing data
-and extracts identifiers matching `K7_Pro...` or `K7mini...`.
+and extracts identifiers matching `K7_Pro...`.
 
 ```text
 AB AA 10 08
@@ -96,12 +93,9 @@ from the official APK is copied into this repository.
 
 ## Validation status
 
-Static analysis and automated mock-device tests are complete. The physical
-K7 Pro `K7_Pro10021` was reached at `10.0.30.134:8266`; full-state reads,
-manual luminance writes, and automatic/manual mode restoration were verified.
-The manual test changed channel one from 50 to 49, read it back, restored it to
-50, and restored automatic mode. The stored 24-point schedule was not changed.
-
-Schedule writes, preview output, demonstration mode, and clock writes remain
-unverified against the physical lamp. Those controls are implemented for later
-explicit testing but are not part of the completed hardware validation.
+Static analysis and automated mock-device tests are complete. Physical
+validation was completed against the K7 Pro 3 `K7_Pro10021` at
+`10.0.30.134:8266`. Full-state reads, manual luminance, automatic/manual mode,
+schedule write and read-back, preview output, demonstration mode, and clock
+synchronization were all verified. The original schedule was backed up before
+testing and device state was restored after validation.

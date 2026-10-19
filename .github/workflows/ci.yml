@@ -19,6 +19,7 @@ jobs:
       - run: ruff check .
       - run: pytest
       - run: node --check custom_components/noopsyche_k7/frontend/noopsyche-k7-card.js
+      - run: node --test tests/test_frontend.js
 
   home-assistant:
     runs-on: ubuntu-latest

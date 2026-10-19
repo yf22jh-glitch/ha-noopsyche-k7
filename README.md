@@ -1,14 +1,13 @@
-# Noo-Psyche K7 for Home Assistant
+# Noo-Psyche K7 Pro 3 for Home Assistant
 
-Local, cloud-free Home Assistant control for Noo-Psyche K7 aquarium lights.
+Local, cloud-free Home Assistant control for Noo-Psyche K7 Pro 3 aquarium lights.
 The integration talks directly to the light over TCP port 8266.
 
 > [!CAUTION]
-> This is an early reverse-engineered integration. Protocol structure is
-> verified against the official Android APK, automated tests, and a physical K7
-> Pro read-state response. Physical validation of write commands is still in
-> progress. Back up the existing schedule with `noopsyche_k7.get_schedule`
-> before any schedule write.
+> This is a reverse-engineered integration. Every implemented read and write
+> command has been verified against the official Android APK, automated tests,
+> and a physical K7 Pro 3. Back up the existing schedule with
+> `noopsyche_k7.get_schedule` before any schedule write.
 
 ## Features
 
@@ -65,7 +64,7 @@ Home Assistant, add the following **JavaScript Module** under **Settings →
 Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.3.1
+/noopsyche_k7/noopsyche-k7-card.js?v=0.3.2
 ```
 
 Then add a **Manual** card with the K7 operating-mode entity as its anchor:
@@ -130,10 +129,8 @@ also overwrites the stored schedule.
 
 ## Compatibility and safety
 
-- K7 Pro protocol: read-state path physically verified with app 2.0.3 protocol
-- K7 Pro manual luminance and mode writes: physically verified and restored
-- K7 Pro schedule, preview, demonstration, and clock writes: physical validation pending
-- K7 Mini: protocol-compatible by app design; physical validation pending
+- K7 Pro 3: every implemented read and write command is physically verified
+- K7 Pro 3 schedule writes were verified with a backup and read-back check
 - No cloud account or token is used
 - The lamp protocol has no authentication, so never expose TCP 8266 publicly
 - Broadcast discovery is not required; VLAN users should register the IP
@@ -148,6 +145,7 @@ python3.11 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
 .venv/bin/ruff check .
 .venv/bin/pytest
+node --test tests/test_frontend.js
 ```
 
 The official APK and decompiled output are excluded from Git and are not needed

@@ -47,6 +47,7 @@ def test_parse_state_response() -> None:
     assert state.manual == (10, 20, 30, 40, 50, 60)
     assert state.auto_mode is True
     assert state.device_id == "K7_Pro10021"
+    assert state.model == "K7 Pro 3"
     assert len(state.schedule) == 24
     assert state.schedule[23].channels[0] == 23
 

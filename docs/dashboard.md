@@ -10,7 +10,7 @@ The integration serves the JavaScript module from Home Assistant. Add this
 **JavaScript Module** under **Settings → Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.3.1
+/noopsyche_k7/noopsyche-k7-card.js?v=0.3.2
 ```
 
 Then add a Manual card and select the K7 operating-mode entity:
@@ -19,6 +19,11 @@ Then add a Manual card and select the K7 operating-mode entity:
 type: custom:noopsyche-k7-card
 entity: select.k7_pro10021_operating_mode
 ```
+
+The initial tab can be configured per card with `default_tab: schedule`.
+Supported values are `control` (the default), `schedule`, and `transfer`.
+After opening the card, selecting another tab stays in effect for that card instance;
+ordinary state updates do not reset it. This option sends no device commands.
 
 Using the Lovelace resource as the single loading path ensures the card is
 registered after the Home Assistant frontend is ready. It prevents the
@@ -38,11 +43,21 @@ envelope, selected-time markers, and legends that show every selected value.
 These are presentation-only enhancements; schedule data remains the same 24
 validated protocol points.
 
+On first entry, the schedule chart follows the current time in Home Assistant's
+configured time zone. Its time line, channel markers, and legend values update
+with the clock without replacing the point editor. These values sample the
+displayed schedule curve; they are not measured lamp output. Endpoint values are
+held before the first and after the last point to fill the 24-hour chart.
+Selecting a point or focusing an editing field stops time-following. The
+**Current time** button resumes it without saving or previewing anything.
+Returning to the schedule tab resumes the clock only when there is no unsaved
+draft; pending edits and their selected point are preserved.
+
 ## Feature mapping
 
 | Official app workflow | Home Assistant card |
 | --- | --- |
-| K7 Pro / K7 Mini device selection | Config-entry device header and model |
+| K7 Pro 3 device selection | Config-entry device header and model |
 | AP/LAN setup and device IP | Home Assistant Config Flow and device information |
 | Automatic/manual switch | Two-state operating-mode control |
 | Six manual channel sliders | Master brightness and six channel sliders |

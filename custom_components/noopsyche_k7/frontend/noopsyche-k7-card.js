@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.1";
+const CARD_VERSION = "0.3.2";
 
 const CHANNELS = [
   { key: "white", name: "White", ko: "화이트", color: "#c8d4dc" },
@@ -45,6 +45,9 @@ const TEXT = {
     profiles: "공식 앱 프로필",
     mixed: "S/L 혼합",
     selectedPoint: "선택 시간점",
+    currentTime: "현재 시각",
+    curveValues: "현재 시각의 일정 곡선 기준 · 실측 출력 아님",
+    storedPointValues: "선택한 시간점의 저장값",
     minute: "분",
     preview: "선택 값 미리보기",
     previewWarning: "미리보기는 조명 출력에 즉시 반영됩니다.",
@@ -104,6 +107,9 @@ const TEXT = {
     profiles: "Official app profiles",
     mixed: "S/L mixed",
     selectedPoint: "Selected point",
+    currentTime: "Current time",
+    curveValues: "Schedule curve at the current time · not measured output",
+    storedPointValues: "Stored values of the selected point",
     minute: "Minute",
     preview: "Preview selected values",
     previewWarning: "Preview immediately changes the lamp output.",
@@ -202,6 +208,7 @@ class NooPsycheK7Card extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._tab = "control";
     this._selectedSlot = 0;
+    this._followCurrentTime = true;
     this._entities = {};
     this._resolved = false;
     this._resolving = false;
@@ -217,6 +224,15 @@ class NooPsycheK7Card extends HTMLElement {
   setConfig(config) {
     if (!config || !config.entity) {
       throw new Error("Noo-Psyche K7 card requires an operating-mode entity");
+    }
+    const defaultTab = config.default_tab ?? "control";
+    if (!["control", "schedule", "transfer"].includes(defaultTab)) {
+      throw new Error("Noo-Psyche K7 default_tab must be control, schedule, or transfer");
+    }
+    if (!this._config || this._config.entity !== config.entity ||
+        (this._config.default_tab ?? "control") !== defaultTab) {
+      this._tab = defaultTab;
+      this._followCurrentTime = true;
     }
     this._config = { ...config };
     this._resolved = false;
@@ -240,6 +256,10 @@ class NooPsycheK7Card extends HTMLElement {
   }
 
   connectedCallback() {
+    if (this._draft && !this._isDirty()) {
+      this._showCurrentTime();
+      this._render();
+    }
     if (!this._clockTimer) {
       this._clockTimer = window.setInterval(() => this._updateClock(), 1000);
     }
@@ -358,6 +378,7 @@ class NooPsycheK7Card extends HTMLElement {
       };
       this._live = normalized;
       this._draft = deepClone(normalized);
+      this._showCurrentTime();
       this._manualDraftChanged = false;
       this._error = null;
     } catch (error) {
@@ -547,18 +568,21 @@ class NooPsycheK7Card extends HTMLElement {
   _scheduleView() {
     const t = this._text();
     const slot = this._draft.schedule[this._selectedSlot];
+    const displayed = this._scheduleDisplayPoint();
     const dirty = this._isDirty();
     return `
       <section class="chart-section">
         <div class="section-head compact chart-head">
           <div><span class="eyebrow">${t.chart}</span><strong>${dirty ? t.draft : t.live}</strong></div>
           <div class="chart-meta">
-            <span class="selected-time"><ha-icon icon="mdi:clock-outline"></ha-icon>${String(slot.hour).padStart(2, "0")}:${String(slot.minute).padStart(2, "0")}</span>
+            <button class="selected-time current-time ${this._followCurrentTime ? "active" : ""}" data-action="current-time" aria-pressed="${this._followCurrentTime}"><ha-icon icon="mdi:clock-outline"></ha-icon>${t.currentTime}</button>
+            <span class="selected-time" data-chart-time>${String(displayed.hour).padStart(2, "0")}:${String(displayed.minute).padStart(2, "0")}</span>
             <span class="draft-state ${dirty ? "dirty" : ""}">${dirty ? t.draft : t.clean}</span>
           </div>
         </div>
-        ${this._chartSvg()}
-        <div class="legend">${CHANNELS.map((channel, index) => `<span style="--channel:${channel.color}"><i></i><b>${this._language() === "ko" ? channel.ko : channel.name}</b><em>${slot.channels[index]}%</em></span>`).join("")}</div>
+        ${this._chartSvg(displayed)}
+        <div class="legend">${CHANNELS.map((channel, index) => `<span style="--channel:${channel.color}"><i></i><b>${this._language() === "ko" ? channel.ko : channel.name}</b><em data-chart-channel="${index}">${Math.round(displayed.channels[index] * 10) / 10}%</em></span>`).join("")}</div>
+        <div class="chart-value-hint" data-chart-value-hint>${this._followCurrentTime ? t.curveValues : t.storedPointValues}</div>
       </section>
 
       <section class="section profile-section">
@@ -609,12 +633,15 @@ class NooPsycheK7Card extends HTMLElement {
     </div>`;
   }
 
-  _chartSvg() {
+  _chartSvg(selected = this._scheduleDisplayPoint()) {
     const { width, height, left, right, top, bottom, hours } = CHART;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
     const x = (slot) => left + ((slot.hour + slot.minute / 60) / hours) * plotWidth;
     const y = (value) => top + ((100 - value) / 100) * plotHeight;
+    // Hold endpoint values outside the stored points so every clock marker sits on a curve.
+    const plotPath = (points) => `${this._smoothPath(points).replace(/^M (\S+)/,
+      `M ${left},${points[0].y.toFixed(1)} L $1`)} L ${width - right},${points.at(-1).y.toFixed(1)}`;
     const grid = [0, 25, 50, 75, 100]
       .map((value) => `<line x1="${left}" y1="${y(value)}" x2="${width - right}" y2="${y(value)}"></line><text x="6" y="${y(value) + 4}">${value}%</text>`)
       .join("");
@@ -627,15 +654,14 @@ class NooPsycheK7Card extends HTMLElement {
     const series = CHANNELS.map((channel, channelIndex) => {
       const points = this._draft.schedule
         .map((slot) => ({ x: x(slot), y: y(slot.channels[channelIndex]) }));
-      const path = this._smoothPath(points);
+      const path = plotPath(points);
       return `<path class="series-glow" d="${path}" stroke="${channel.color}"></path><path class="series-line" d="${path}" stroke="${channel.color}"></path>`;
     }).join("");
     const envelopePoints = this._draft.schedule.map((slot) => ({
       x: x(slot),
       y: y(Math.max(...slot.channels)),
     }));
-    const envelope = `${this._smoothPath(envelopePoints)} L ${envelopePoints.at(-1).x.toFixed(1)},${top + plotHeight} L ${envelopePoints[0].x.toFixed(1)},${top + plotHeight} Z`;
-    const selected = this._draft.schedule[this._selectedSlot];
+    const envelope = `${plotPath(envelopePoints)} L ${width - right},${top + plotHeight} L ${left},${top + plotHeight} Z`;
     const markerX = x(selected);
     const markers = CHANNELS.map(
       (channel, index) =>
@@ -685,6 +711,91 @@ class NooPsycheK7Card extends HTMLElement {
         ? index
         : nearestIndex;
     }, 0);
+  }
+
+  _currentScheduleTime(now = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: this._hass?.config?.time_zone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(now);
+    return {
+      hour: Number(parts.find((part) => part.type === "hour").value),
+      minute: Number(parts.find((part) => part.type === "minute").value),
+    };
+  }
+
+  _showCurrentTime(now = new Date()) {
+    this._followCurrentTime = true;
+    if (!this._draft) return;
+    const current = this._currentScheduleTime(now);
+    const slot = this._draft.schedule.findIndex((point) => point.hour === current.hour);
+    if (slot >= 0) this._selectedSlot = slot;
+  }
+
+  _scheduleDisplayPoint(now = new Date()) {
+    if (!this._followCurrentTime) return this._draft.schedule[this._selectedSlot];
+    const current = this._currentScheduleTime(now);
+    return { ...current, channels: this._curveChannelsAt(current.hour * 60 + current.minute) };
+  }
+
+  _curveChannelsAt(minute) {
+    // Sample the same quadratic segments used by _smoothPath, not firmware output.
+    const points = this._draft.schedule.map((point) => ({
+      time: point.hour * 60 + point.minute,
+      channels: point.channels,
+    }));
+    if (minute <= points[0].time) return [...points[0].channels];
+    if (minute >= points.at(-1).time) return [...points.at(-1).channels];
+    let start = points[0];
+    const quadratic = (a, b, c, t) => (1 - t) ** 2 * a + 2 * (1 - t) * t * b + t ** 2 * c;
+    for (let index = 1; index < points.length; index += 1) {
+      const last = index === points.length - 1;
+      const control = points[last ? index - 1 : index];
+      const end = last ? points[index] : {
+        time: (points[index].time + points[index + 1].time) / 2,
+        channels: points[index].channels.map((value, channel) =>
+          (value + points[index + 1].channels[channel]) / 2),
+      };
+      if (minute <= end.time) {
+        let low = 0;
+        let high = 1;
+        for (let step = 0; step < 40; step += 1) {
+          const middle = (low + high) / 2;
+          if (quadratic(start.time, control.time, end.time, middle) < minute) low = middle;
+          else high = middle;
+        }
+        const t = (low + high) / 2;
+        return start.channels.map((value, channel) =>
+          quadratic(value, control.channels[channel], end.channels[channel], t));
+      }
+      start = end;
+    }
+    return [...points.at(-1).channels];
+  }
+
+  _updateScheduleDisplay() {
+    const time = this.shadowRoot?.querySelector("[data-chart-time]");
+    if (!time || !this._draft) return;
+    const point = this._scheduleDisplayPoint();
+    time.textContent = `${String(point.hour).padStart(2, "0")}:${String(point.minute).padStart(2, "0")}`;
+    const x = CHART.left + ((point.hour + point.minute / 60) / CHART.hours) * (CHART.width - CHART.left - CHART.right);
+    const line = this.shadowRoot.querySelector(".selected-line");
+    line?.setAttribute("x1", x);
+    line?.setAttribute("x2", x);
+    this.shadowRoot.querySelectorAll(".selected-markers circle").forEach((circle, index) => {
+      circle.setAttribute("cx", x.toFixed(1));
+      circle.setAttribute("cy", (CHART.top + ((100 - point.channels[index]) / 100) * (CHART.height - CHART.top - CHART.bottom)).toFixed(1));
+    });
+    this.shadowRoot.querySelectorAll("[data-chart-channel]").forEach((label) => {
+      label.textContent = `${Math.round(point.channels[Number(label.dataset.chartChannel)] * 10) / 10}%`;
+    });
+    const button = this.shadowRoot.querySelector('[data-action="current-time"]');
+    button?.classList.toggle("active", this._followCurrentTime);
+    button?.setAttribute("aria-pressed", String(this._followCurrentTime));
+    const hint = this.shadowRoot.querySelector("[data-chart-value-hint]");
+    if (hint) hint.textContent = this._followCurrentTime ? this._text().curveValues : this._text().storedPointValues;
   }
 
   _transferView() {
@@ -779,6 +890,9 @@ class NooPsycheK7Card extends HTMLElement {
     const t = this._text();
     this.shadowRoot.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
+        if (button.dataset.tab === "schedule" && this._tab !== "schedule" && !this._isDirty()) {
+          this._showCurrentTime();
+        }
         this._tab = button.dataset.tab;
         this._render();
       });
@@ -817,8 +931,15 @@ class NooPsycheK7Card extends HTMLElement {
     });
     this.shadowRoot.querySelectorAll("[data-slot]").forEach((button) => {
       button.addEventListener("click", () => {
+        this._followCurrentTime = false;
         this._selectedSlot = Number(button.dataset.slot);
         this._render();
+      });
+    });
+    this.shadowRoot.querySelectorAll("[data-draft-minute], [data-draft-range], [data-draft-percent]").forEach((input) => {
+      input.addEventListener("focus", () => {
+        this._followCurrentTime = false;
+        this._updateScheduleDisplay();
       });
     });
     const minuteInput = this.shadowRoot.querySelector("[data-draft-minute]");
@@ -867,6 +988,7 @@ class NooPsycheK7Card extends HTMLElement {
       const rect = event.currentTarget.getBoundingClientRect();
       if (rect.width <= 0) return;
       const svgX = ((event.clientX - rect.left) / rect.width) * CHART.width;
+      this._followCurrentTime = false;
       this._selectedSlot = this._scheduleSlotAtSvgX(svgX);
       this._render();
     });
@@ -879,6 +1001,7 @@ class NooPsycheK7Card extends HTMLElement {
 
   async _handleAction(action) {
     const handlers = {
+      "current-time": () => { this._showCurrentTime(); this._render(); },
       "sync-now": () => this._pressSync(),
       "sync-custom": () => this._syncCustomTime(),
       demonstration: () => this._toggleDemonstration(),
@@ -906,6 +1029,10 @@ class NooPsycheK7Card extends HTMLElement {
       entity_id: this._entities.mode,
       option: mode,
     });
+    const autoMode = mode === "auto";
+    if (this._live) this._live.auto_mode = autoMode;
+    if (this._draft) this._draft.auto_mode = autoMode;
+    this._render();
   }
 
   async _setManualValue(input, rawValue = input.value) {
@@ -1015,7 +1142,6 @@ class NooPsycheK7Card extends HTMLElement {
     try {
       const serviceData = {
         config_entry_id: this._configEntryId,
-        auto_mode: this._draft.auto_mode,
         schedule: this._draft.schedule,
       };
       if (this._manualDraftChanged) {
@@ -1107,13 +1233,14 @@ class NooPsycheK7Card extends HTMLElement {
 
   _updateClock() {
     const target = this.shadowRoot?.querySelector(".clock");
-    if (!target) return;
-    target.textContent = new Intl.DateTimeFormat(this._hass?.locale?.language || undefined, {
+    if (target) target.textContent = new Intl.DateTimeFormat(this._hass?.locale?.language || undefined, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
+      timeZone: this._hass?.config?.time_zone,
     }).format(new Date());
+    this._updateScheduleDisplay();
   }
 
   _styles() {
@@ -1211,6 +1338,9 @@ class NooPsycheK7Card extends HTMLElement {
       .chart-meta { display: flex; align-items: center; gap: 7px; }
       .selected-time { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border: 1px solid rgba(255,255,255,.07); border-radius: 10px; color: #e7e2e9; background: rgba(255,255,255,.035); font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
       .selected-time ha-icon { color: var(--k7-pink); --mdc-icon-size: 15px; }
+      .current-time { cursor: pointer; }
+      .current-time.active { color: #ff9bbd; border-color: rgba(255,75,139,.35); background: rgba(255,75,139,.1); }
+      .chart-value-hint { margin-top: 9px; color: var(--k7-muted); font-size: 10px; }
       .draft-state { padding: 7px 9px; border-radius: 10px; color: var(--k7-muted); background: rgba(255,255,255,.04); font-size: 10px; font-weight: 700; }
       .draft-state.dirty { color: #ffbf64; background: rgba(255,166,0,.11); }
       .chart { display: block; width: 100%; margin: 10px 0 12px; cursor: crosshair; overflow: visible; }
