@@ -52,29 +52,6 @@ def test_parse_state_response() -> None:
     assert state.schedule[23].channels[0] == 23
 
 
-@pytest.mark.parametrize(
-    "device_id,model",
-    [
-        (b"K7mini10021", "K7 Mini"),
-        (b"K7mini_X-2", "K7 Mini"),
-        (b"K7_Pro10021", "K7 Pro 3"),
-    ],
-)
-def test_parse_state_preserves_model_identity_and_payload(
-    device_id: bytes, model: str
-) -> None:
-    response = _response().replace(b"K7_Pro10021", device_id)
-
-    state = parse_state_response(response)
-
-    assert state.device_id == device_id.decode("ascii")
-    assert state.model == model
-    assert state.manual == (10, 20, 30, 40, 50, 60)
-    assert state.schedule == _schedule()
-    assert state.auto_mode is True
-    assert state.trailing_data == bytes((12, 34, 56)) + device_id
-
-
 def test_build_packet() -> None:
     assert build_packet(CMD_CHANGE_MODE, b"\x01") == b"\xaa\xa5\x10\x04\x01\xbb"
 

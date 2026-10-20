@@ -32,7 +32,7 @@ SCHEDULE_SLOT_SIZE = 8
 MAX_RESPONSE_SIZE = 4096
 ACK_SETTLE_TIMEOUT = 2.0
 
-_DEVICE_ID_PATTERN = re.compile(rb"(?:K7_Pro|K7mini)[A-Za-z0-9_-]{0,24}")
+_DEVICE_ID_PATTERN = re.compile(rb"K7_Pro[A-Za-z0-9_-]{0,24}")
 
 
 class K7Error(Exception):
@@ -96,8 +96,6 @@ class LampState:
     @property
     def model(self) -> str:
         """Return the supported hardware model."""
-        if self.device_id and self.device_id.startswith("K7mini"):
-            return "K7 Mini"
         return "K7 Pro 3"
 
     def as_dict(self) -> dict[str, object]:
