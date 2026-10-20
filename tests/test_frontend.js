@@ -264,3 +264,22 @@ test("schedule save preserves the coordinator's current operating mode", async (
   assert.equal(calls[0].data.config_entry_id, "test-entry");
   assert.deepEqual(calls[0].data.schedule, card._draft.schedule);
 });
+
+test("changing mode then saving an edited schedule cannot restore the old mode", async () => {
+  const { card, calls } = createCard();
+  card._isDirty = () => true;
+  const schedule = JSON.parse(JSON.stringify(card._draft.schedule));
+  schedule[0].channels[0] = 42;
+
+  await card._setMode("manual");
+  card._draft.schedule = schedule;
+  await card._saveSchedule();
+
+  assert.equal(card._live.auto_mode, false);
+  assert.equal(card._draft.auto_mode, false);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].data.option, "manual");
+  assert.equal(calls[1].service, "set_schedule");
+  assert.equal(Object.hasOwn(calls[1].data, "auto_mode"), false);
+  assert.deepEqual(calls[1].data.schedule, schedule);
+});

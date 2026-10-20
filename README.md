@@ -24,6 +24,7 @@ The integration talks directly to the light over TCP port 8266.
 - Current-time and explicit-time synchronization
 - Local polling and automatic unavailable/recovery handling
 - Korean and English translations
+- Preserve K7 Mini identifiers in read responses, including the original channels and schedule
 
 Manual controls are intentionally unavailable while the light is in automatic
 mode. Select **Manual** first; this prevents a channel adjustment from silently
@@ -64,7 +65,7 @@ Home Assistant, add the following **JavaScript Module** under **Settings →
 Dashboards → Resources**:
 
 ```text
-/noopsyche_k7/noopsyche-k7-card.js?v=0.3.2
+/noopsyche_k7/noopsyche-k7-card.js?v=0.3.3
 ```
 
 Then add a **Manual** card with the K7 operating-mode entity as its anchor:

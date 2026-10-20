@@ -1,4 +1,4 @@
-const CARD_VERSION = "0.3.2";
+const CARD_VERSION = "0.3.3";
 
 const CHANNELS = [
   { key: "white", name: "White", ko: "화이트", color: "#c8d4dc" },
